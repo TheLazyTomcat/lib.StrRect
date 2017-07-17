@@ -21,9 +21,9 @@
     Lazarus 1.4.4 - FPC 2.6.4 (non-unicode, windows)
     Lazarus 1.6.4 - FPC 3.0.2 (unicode and non-unicode, windows)
 
-  ©František Milt 2017-07-16
+  ©František Milt 2017-07-18
 
-  Version 1.0
+  Version 1.0.1
 
 ===============================================================================}
 unit StrRect;
@@ -163,7 +163,7 @@ end;
 
 {$IF Defined(FPC) and not Defined(Unicode)}
 
-Function _StrToAnsi(Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
+Function _StrToAnsi(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
 begin
 {$IFDEF BARE_FPC}
   Result := Str;
@@ -178,7 +178,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function _AnsiToStr(Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
+Function _AnsiToStr(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
 begin
 {$IFDEF BARE_FPC}
   Result := Str;
@@ -193,7 +193,33 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function _StrToWide(Str: String): UnicodeString;{$IFDEF CanInline} inline; {$ENDIF}
+Function _StrToUTF8(const Str: String): UTF8String;{$IFDEF CanInline} inline; {$ENDIF}
+begin
+{$IFDEF BARE_FPC}
+  Result := AnsiToUTF8(Str);
+{$ELSE}
+  // prevent implicit conversion
+  SetLength(Result,Length(Str));
+  Move(Addr(Str[1])^,Addr(Result[1])^,Length(Str));
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function _UTF8ToStr(const Str: UTF8String): String;{$IFDEF CanInline} inline; {$ENDIF}
+begin
+{$IFDEF BARE_FPC}
+  Result := UTF8ToAnsi(Str);
+{$ELSE}
+  // prevent implicit conversion
+  SetLength(Result,Length(Str));
+  Move(Addr(Str[1])^,Addr(Result[1])^,Length(Str));
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function _StrToWide(const Str: String): UnicodeString;{$IFDEF CanInline} inline; {$ENDIF}
 begin
 {$IFDEF BARE_FPC}
   Result := UnicodeString(Str);
@@ -204,7 +230,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function _WideToStr(Str: UnicodeString): String;{$IFDEF CanInline} inline; {$ENDIF}
+Function _WideToStr(const Str: UnicodeString): String;{$IFDEF CanInline} inline; {$ENDIF}
 begin
 {$IFDEF BARE_FPC}
   Result := String(Str);
@@ -269,11 +295,9 @@ begin
   {$ENDIF}
 {$ELSE}
   {$IFDEF FPC}
-    // prevent implicit conversion
-    SetLength(Result,Length(Str));
-    Move(Addr(Str[1])^,Addr(Result[1])^,Length(Str));
+    Result := _StrToUTF8(Str);
   {$ELSE}
-    Result := AnsitoUTF8(Str);
+    Result := AnsiToUTF8(Str);
   {$ENDIF}
 {$ENDIF}
 end;
@@ -290,9 +314,7 @@ begin
   {$ENDIF}
 {$ELSE}
   {$IFDEF FPC}
-    // prevent implicit conversion
-    SetLength(Result,Length(Str));
-    Move(Addr(Str[1])^,Addr(Result[1])^,Length(Str));
+    Result := _UTF8ToStr(Str);
   {$ELSE}
     Result := UTF8ToAnsi(Str);
   {$ENDIF}
