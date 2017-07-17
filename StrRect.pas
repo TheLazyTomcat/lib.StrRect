@@ -55,9 +55,12 @@ unit StrRect;
 
 interface
 
-{$IF not Declared(UnicodeString)}
 type
+{$IF not Declared(UnicodeString)}
   UnicodeString = WideString;
+{$ELSE}
+  // don't ask, it must be here (possible bug in FPC)
+  UnicodeString = System.UnicodeString;
 {$IFEND}
 
 Function StrToAnsi(const Str: String): AnsiString;{$IFDEF CanInline} inline; {$ENDIF}
