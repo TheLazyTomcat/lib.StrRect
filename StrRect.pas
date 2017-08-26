@@ -21,9 +21,9 @@
     Lazarus 1.4.4 - FPC 2.6.4 (non-unicode, windows)
     Lazarus 1.6.4 - FPC 3.0.2 (unicode and non-unicode, windows)
 
-  ©František Milt 2017-07-18
+  ©František Milt 2017-08-26
 
-  Version 1.0.1
+  Version 1.0.2
 
 ===============================================================================}
 unit StrRect;
@@ -132,10 +132,14 @@ end;
 Function AnsiToConsole(const Str: String): String;
 begin
 {$IFDEF Windows}
-  Result := StrToWinA(Str);
-  UniqueString(Result);
-  If not CharToOEMBuff(PAnsiChar(Result),PAnsiChar(Result),Length(Result)) then
-    Result := '';
+  If Length (Str) > 0 then
+    begin
+      Result := StrToWinA(Str);
+      UniqueString(Result);
+      If not CharToOEMBuff(PAnsiChar(Result),PAnsiChar(Result),Length(Result)) then
+        Result := '';
+    end
+  else Result := '';
 {$ELSE}
   Result := Str;
 {$ENDIF}
@@ -146,12 +150,16 @@ end;
 Function ConsoleToAnsi(const Str: String): String;
 begin
 {$IFDEF Windows}
-  Result := Str;
-  UniqueString(Result);
-  If OEMToCharBuff(PAnsiChar(Result),PAnsiChar(Result),Length(Result)) then
-    Result := WinAToStr(Result)
-  else
-    Result := '';
+  If Length (Str) > 0 then
+    begin
+      Result := Str;
+      UniqueString(Result);
+      If OEMToCharBuff(PAnsiChar(Result),PAnsiChar(Result),Length(Result)) then
+        Result := WinAToStr(Result)
+      else
+        Result := '';
+    end
+  else Result := '';
 {$ELSE}
   Result := Str;
 {$ENDIF}
@@ -198,9 +206,13 @@ begin
 {$IFDEF BARE_FPC}
   Result := AnsiToUTF8(Str);
 {$ELSE}
-  // prevent implicit conversion
-  SetLength(Result,Length(Str));
-  Move(Addr(Str[1])^,Addr(Result[1])^,Length(Str));
+  If Length(Str) > 0 then
+    begin
+      // prevent implicit conversion
+      SetLength(Result,Length(Str));
+      Move(Addr(Str[1])^,Addr(Result[1])^,Length(Str));
+    end
+  else Result := '';
 {$ENDIF}
 end;
 
@@ -211,9 +223,13 @@ begin
 {$IFDEF BARE_FPC}
   Result := UTF8ToAnsi(Str);
 {$ELSE}
-  // prevent implicit conversion
-  SetLength(Result,Length(Str));
-  Move(Addr(Str[1])^,Addr(Result[1])^,Length(Str));
+  If Length(Str) > 0 then
+    begin
+      // prevent implicit conversion
+      SetLength(Result,Length(Str));
+      Move(Addr(Str[1])^,Addr(Result[1])^,Length(Str));
+    end
+  else Result := '';
 {$ENDIF}
 end;
 
