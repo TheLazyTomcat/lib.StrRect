@@ -21,9 +21,9 @@
     Lazarus 1.4.4 - FPC 2.6.4 (non-unicode, windows)
     Lazarus 1.6.4 - FPC 3.0.2 (unicode and non-unicode, windows)
 
-  Â©FrantiÅ¡ek Milt 2017-08-26
+  ©František Milt 2017-08-26
 
-  Version 1.0.2
+  Version 1.1.0
 
 ===============================================================================}
 unit StrRect;
@@ -62,6 +62,9 @@ type
   // don't ask, it must be here (possible bug in FPC)
   UnicodeString = System.UnicodeString;
 {$IFEND}
+
+Function StrToShort(const Str: String): ShortString;{$IFDEF CanInline} inline; {$ENDIF}
+Function ShortToStr(const Str: ShortString): String;{$IFDEF CanInline} inline; {$ENDIF}
 
 Function StrToAnsi(const Str: String): AnsiString;{$IFDEF CanInline} inline; {$ENDIF}
 Function AnsiToStr(const Str: AnsiString): String;{$IFDEF CanInline} inline; {$ENDIF}
@@ -259,22 +262,70 @@ end;
 
 //==============================================================================
 
-Function StrToAnsi(const Str: String): AnsiString;
+Function StrToShort(const Str: String): ShortString;
 begin
+{$IFOPT H+}
+  // long strings
 {$IFDEF Unicode}
   {$IFDEF FPC}
     // unicode FPC (String = UnicodeString)
-    Result := {$IFNDEF BARE_FPC}UTF8ToWinCP{$ENDIF}(UTF8Encode(Str));
+    Result := ShortString({$IFNDEF BARE_FPC}UTF8ToWinCP{$ENDIF}(UTF8Encode(Str)));
   {$ELSE}
     // unicode Delphi (String = UnicodeString)
-    Result := AnsiString(Str);
+    Result := ShortString(Str);
   {$ENDIF}
 {$ELSE}
   {$IFDEF FPC}
     // non-unicode FPC (String = AnsiString(UTF8))
-    Result := _StrToAnsi(Str);
+    Result := ShortString(_StrToAnsi(Str));
   {$ELSE}
     // non-unicode delphi (String = AnsiString)
+    Result := ShortString(Str);
+  {$ENDIF}
+{$ENDIF}
+{$ELSE}
+  // short strings
+  Result := Str;
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function ShortToStr(const Str: ShortString): String;
+begin
+{$IFOPT H+}
+{$IFDEF Unicode}
+  {$IFDEF FPC}
+    Result := UTF8Decode({$IFNDEF BARE_FPC}WinCPToUTF8{$ENDIF}(AnsiString(Str)));
+  {$ELSE}
+    Result := String(Str);
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF FPC}
+    Result := _AnsiToStr(AnsiString(Str));
+  {$ELSE}
+    Result := String(Str);
+  {$ENDIF}
+{$ENDIF}
+{$ELSE}
+  Result := Str;
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function StrToAnsi(const Str: String): AnsiString;
+begin
+{$IFDEF Unicode}
+  {$IFDEF FPC}
+    Result := {$IFNDEF BARE_FPC}UTF8ToWinCP{$ENDIF}(UTF8Encode(Str));
+  {$ELSE}
+    Result := AnsiString(Str);
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF FPC}
+    Result := _StrToAnsi(Str);
+  {$ELSE}
     Result := Str;
   {$ENDIF}
 {$ENDIF}
