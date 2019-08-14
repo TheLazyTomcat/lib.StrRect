@@ -9,21 +9,41 @@
 
   StrRect - String rectification utility
 
-  Main aim of this library is to simplify conversions in Lazarus when passing
-  strings to RTL or WinAPI - mainly to ensure the same code can be used in all
-  compilers (Delphi, FPC 2.x.x, FPC 3.x.x) without a need for symbol checks.
+    Main aim of this library is to simplify conversions in Lazarus when passing
+    strings to RTL or WinAPI - mainly to ensure the same code can be used in all
+    compilers (Delphi, FPC 2.x.x, FPC 3.x.x) without a need for symbol checks.
 
-  Library was tested in these IDE/compilers:
+    It also provides set of functions for string comparison that encapsulates
+    some of the intricacies given by different approach in different compilers.
 
-    Delphi 7 Personal (non-unicode, windows)
-    Delphi 10.1 Berlin Personal (unicode, windows)
-    Lazarus 1.4.0 - FPC 2.6.4 (non-unicode, linux)
-    Lazarus 1.4.4 - FPC 2.6.4 (non-unicode, windows)
-    Lazarus 1.6.4 - FPC 3.0.2 (unicode and non-unicode, windows)
+    Note that in Linux, ansi encoding in fact does not exists - ansi strings
+    and short strings are both encoded using UTF8.
 
-  ©František Milt 2017-08-26
+    Library was tested in these IDE/compilers:
 
-  Version 1.1.0
+      Delphi 7 Personal (non-unicode, Windows)
+      Delphi 10.1 Berlin Personal (unicode, Windows)
+      Lazarus 1.4.4 - FPC 2.6.4 (non-unicode, Windows)
+      Lazarus 2.0.2 - FPC 3.0.4 (non-unicode, Windows)
+      Lazarus 2.0.2 - FPC 3.0.4 (non-unicode, Linux)
+      Lazarus 2.0.2 - FPC 3.0.4 (unicode, Windows)
+      Lazarus 2.0.2 - FPC 3.0.4 (unicode, Linux)  
+
+  ©František Milt 2019-08-14
+
+  Version 1.2.0
+
+  Contacts:
+    František Milt: frantisek.milt@gmail.com
+
+  Support:
+    If you find this code useful, please consider supporting its author(s) by
+    making a small donation using the following link(s):
+
+      https://www.paypal.me/FMilt
+
+  Dependencies:
+    none
 
 ===============================================================================}
 unit StrRect;
@@ -55,13 +75,32 @@ unit StrRect;
 
 interface
 
-type
 {$IF not Declared(UnicodeString)}
-  UnicodeString = WideString;
-{$ELSE}
-  // don't ask, it must be here (possible bug in FPC)
-  UnicodeString = System.UnicodeString;
+type
+  UnicodeString = WideString; 
 {$IFEND}
+
+{===============================================================================
+    auxiliary functions
+===============================================================================}
+
+{
+  Following two functions are present in newer Delphi where they replace
+  deprecated UTF8Decode/UTF8Encode.
+  They are here for use in older compilers.
+}
+{$IF not Declared(UTF8ToString)}
+Function UTF8ToString(const Str: UTF8String): UnicodeString;{$IFDEF CanInline} inline; {$ENDIF}
+{$DEFINE Implement_UTF8ToString}
+{$IFEND}
+{$IF not Declared(StringToUTF8)}
+Function StringToUTF8(const Str: UnicodeString): UTF8String;{$IFDEF CanInline} inline; {$ENDIF}
+{$DEFINE Implement_StringToUTF8}
+{$IFEND}
+
+{===============================================================================
+    default string <-> explicit string conversion
+===============================================================================}
 
 Function StrToShort(const Str: String): ShortString;{$IFDEF CanInline} inline; {$ENDIF}
 Function ShortToStr(const Str: ShortString): String;{$IFDEF CanInline} inline; {$ENDIF}
@@ -93,43 +132,64 @@ Function WinToStr(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
 Function StrToCsl(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
 Function CslToStr(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
 
+{===============================================================================
+    explicit string comparison
+===============================================================================}
+
+Function ShortStringCompare(const A,B: ShortString; CaseSensitive: Boolean): Integer;
+Function AnsiStringCompare(const A,B: AnsiString; CaseSensitive: Boolean): Integer;
+Function UTF8StringCompare(const A,B: UTF8String; CaseSensitive: Boolean): Integer;
+Function WideStringCompare(const A,B: WideString; CaseSensitive: Boolean): Integer;
+Function UnicodeStringCompare(const A,B: UnicodeString; CaseSensitive: Boolean): Integer;
+Function StringCompare(const A,B: String; CaseSensitive: Boolean): Integer;
+
 implementation
 
-{$IF (not Defined(FPC) and Defined(Windows)) or (Defined(FPC) and not Defined(BARE_FPC))}
 uses
+  SysUtils
+{$IF not Defined(FPC) and (CompilerVersion >= 20)}(* Delphi2009+ *)
+  , AnsiStrings
+{$IFEND}
 {$IF not Defined(FPC) and Defined(Windows)}
-  Windows 
+  , Windows
 {$IFEND}
 {$IF Defined(FPC) and not Defined(BARE_FPC)}
-  {$IF not Defined(FPC) and Defined(Windows)},{$IFEND}
 (*
   If compiler raises and error that LazUTF8 unit cannot be found, you have to
   add LazUtils to required packages (Project > Project Inspector).
 *)
-  LazUTF8
+  , LazUTF8
 {$IFEND};
-{$IFEND}
 
-//==============================================================================
+{===============================================================================
+    auxiliary functions
+===============================================================================}
 
-{$IF not Declared(UTF8ToString)}
-Function UTF8ToString(const Str: UTF8String): UnicodeString;{$IFDEF CanInline} inline; {$ENDIF}
+{$IFDEF Implement_UTF8ToString}
+Function UTF8ToString(const Str: UTF8String): UnicodeString;
 begin
 Result := UTF8Decode(Str);
 end;
-{$IFEND}
+{$ENDIF}
 
 //------------------------------------------------------------------------------
 
-{$IF not Declared(StringToUTF8)}
-Function StringToUTF8(const Str: UnicodeString): UTF8String;{$IFDEF CanInline} inline; {$ENDIF}
-begin                  
+{$IFDEF Implement_StringToUTF8}
+Function StringToUTF8(const Str: UnicodeString): UTF8String;
+begin
 Result := UTF8Encode(Str);
 end;
-{$IFEND}
+{$ENDIF}
 
-//==============================================================================
+{===============================================================================
+    default string <-> explicit string conversion
+===============================================================================}
 
+{-------------------------------------------------------------------------------
+    internal functions
+-------------------------------------------------------------------------------}
+
+// non-unicode delphi
 {$IF not Defined(FPC) and not Defined(Unicode)}
 
 Function AnsiToConsole(const Str: String): String;
@@ -172,6 +232,7 @@ end;
 
 //==============================================================================
 
+// non-unicode FPC
 {$IF Defined(FPC) and not Defined(Unicode)}
 
 Function _StrToAnsi(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
@@ -260,7 +321,9 @@ end;
 
 {$IFEND}
 
-//==============================================================================
+{-------------------------------------------------------------------------------
+    public functions
+-------------------------------------------------------------------------------}
 
 Function StrToShort(const Str: String): ShortString;
 begin
@@ -556,6 +619,116 @@ begin
     Result := ConsoleToAnsi(Str);
   {$ENDIF}
 {$ENDIF}
+end;
+
+{===============================================================================
+    explicit string comparison
+===============================================================================}
+
+Function ShortStringCompare(const A,B: ShortString; CaseSensitive: Boolean): Integer;
+begin
+If CaseSensitive then
+{$IF Defined(FPC) and Defined(Unicode)}
+  Result := SysUtils.UnicodeCompareStr(ShortToStr(A),ShortToStr(B))
+else
+  Result := SysUtils.UnicodeCompareText(ShortToStr(A),ShortToStr(B));
+{$ELSE}
+  Result := SysUtils.AnsiCompareStr(ShortToStr(A),ShortToStr(B))
+else
+  Result := SysUtils.AnsiCompareText(ShortToStr(A),ShortToStr(B));
+{$IFEND}
+end;
+
+//------------------------------------------------------------------------------
+
+Function AnsiStringCompare(const A,B: AnsiString; CaseSensitive: Boolean): Integer;
+begin
+If CaseSensitive then
+{$IFDEF FPC}
+  Result := SysUtils.AnsiCompareStr(A,B)
+else
+  Result := SysUtils.AnsiCompareText(A,B)
+{$ELSE}
+{$IF Declared(AnsiStrings)}
+  Result := AnsiStrings.AnsiCompareStr(A,B)
+else
+  Result := AnsiStrings.AnsiCompareText(A,B)
+{$ELSE}
+  Result := SysUtils.AnsiCompareStr(A,B)
+else
+  Result := SysUtils.AnsiCompareText(A,B)
+{$IFEND}
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function UTF8StringCompare(const A,B: UTF8String; CaseSensitive: Boolean): Integer;
+begin
+If CaseSensitive then
+{$IFDEF FPC}
+  Result := SysUtils.UnicodeCompareStr(UTF8ToString(A),UTF8ToString(B))
+else
+  Result := SysUtils.UnicodeCompareText(UTF8ToString(A),UTF8ToString(B))
+{$ELSE}
+{$IFDEF Unicode}
+  Result := SysUtils.AnsiCompareStr(UTF8ToString(A),UTF8ToString(B))
+else
+  Result := SysUtils.AnsiCompareText(UTF8ToString(A),UTF8ToString(B))
+{$ELSE}
+  Result := SysUtils.WideCompareStr(UTF8ToString(A),UTF8ToString(B))
+else
+  Result := SysUtils.WideCompareText(UTF8ToString(A),UTF8ToString(B))
+{$ENDIF}
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function WideStringCompare(const A,B: WideString; CaseSensitive: Boolean): Integer;
+begin
+If CaseSensitive then
+  Result := SysUtils.WideCompareStr(A,B)
+else
+  Result := SysUtils.WideCompareText(A,B)
+end;
+
+//------------------------------------------------------------------------------
+
+Function UnicodeStringCompare(const A,B: UnicodeString; CaseSensitive: Boolean): Integer;
+begin
+If CaseSensitive then
+{$IFDEF FPC}
+  Result := SysUtils.UnicodeCompareStr(A,B)
+else
+  Result := SysUtils.UnicodeCompareText(A,B)
+{$ELSE}
+{$IFDEF Unicode}
+  Result := SysUtils.AnsiCompareStr(A,B)
+else
+  Result := SysUtils.AnsiCompareText(A,B)
+{$ELSE}
+  Result := SysUtils.WideCompareStr(A,B)
+else
+  Result := SysUtils.WideCompareText(A,B)
+{$ENDIF}
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function StringCompare(const A,B: String; CaseSensitive: Boolean): Integer;
+begin
+If CaseSensitive then
+{$IF Defined(FPC) and Defined(Unicode)}
+  Result := SysUtils.UnicodeCompareStr(A,B)
+else
+  Result := SysUtils.UnicodeCompareText(A,B)
+{$ELSE}
+  Result := SysUtils.AnsiCompareStr(A,B)
+else
+  Result := SysUtils.AnsiCompareText(A,B)
+{$IFEND}
 end;
 
 end.
