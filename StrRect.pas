@@ -29,9 +29,11 @@
       Lazarus 2.0.2 - FPC 3.0.4 (unicode, Windows)
       Lazarus 2.0.2 - FPC 3.0.4 (unicode, Linux)  
 
-  ©František Milt 2019-08-14
-
   Version 1.2.0
+
+  Last changed 2019-08-14
+
+  ©2017-2019 František Milt  
 
   Contacts:
     František Milt: frantisek.milt@gmail.com
