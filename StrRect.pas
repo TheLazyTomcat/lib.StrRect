@@ -31,7 +31,7 @@
 
   Version 1.2.0
 
-  Last changed 2019-08-14
+  Last changed 2019-08-16
 
   ©2017-2019 František Milt  
 
@@ -77,9 +77,12 @@ unit StrRect;
 
 interface
 
-{$IF not Declared(UnicodeString)}
 type
-  UnicodeString = WideString; 
+{$IF not Declared(UnicodeString)}
+  UnicodeString = WideString;
+{$ELSE}
+  // don't ask, it must be here
+  UnicodeString = System.UnicodeString;
 {$IFEND}
 
 {===============================================================================
