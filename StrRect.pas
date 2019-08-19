@@ -29,9 +29,9 @@
       Lazarus 2.0.2 - FPC 3.0.4 (unicode, Windows)
       Lazarus 2.0.2 - FPC 3.0.4 (unicode, Linux)  
 
-  Version 1.2.0
+  Version 1.2.0 (2019-08-14)
 
-  Last changed 2019-08-16
+  Last change 2019-08-19
 
   ©2017-2019 František Milt  
 
@@ -43,6 +43,11 @@
     making a small donation using the following link(s):
 
       https://www.paypal.me/FMilt
+
+  Changelog:
+    For detailed changelog and history please refer to this git repository:
+
+      github.com/TheLazyTomcat/Lib.StrRect
 
   Dependencies:
     none
