@@ -31,9 +31,9 @@
 
   Version 1.2.0 (2019-08-14)
 
-  Last change 2019-08-19
+  Last change 2020-03-09
 
-  ©2017-2019 František Milt  
+  ©2017-2020 František Milt
 
   Contacts:
     František Milt: frantisek.milt@gmail.com
@@ -55,6 +55,10 @@
 ===============================================================================}
 unit StrRect;
 
+{$IF Defined(WINDOWS) or Defined(MSWINDOWS)}
+  {$DEFINE Windows}
+{$IFEND}
+
 {$IFDEF FPC}
   {
     Activate symbol BARE_FPC if you want to compile this unit outside of
@@ -75,10 +79,6 @@ unit StrRect;
     {$UNDEF CanInline}
   {$IFEND}
 {$ENDIF}
-
-{$IF Defined(WINDOWS) or Defined(MSWINDOWS)}
-  {$DEFINE Windows}
-{$IFEND}
 
 interface
 
