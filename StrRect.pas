@@ -16,22 +16,26 @@
     It also provides set of functions for string comparison that encapsulates
     some of the intricacies given by different approach in different compilers.
 
-    Note that in Linux, ansi encoding in fact does not exists - ansi strings
-    and short strings are both encoded using UTF8.
+    For details about encodings refer to file encoding_notes.txt distributed
+    with this library.
 
-    Library was tested in these IDE/compilers:
+    Library was tested in following IDE/compilers:
 
       Delphi 7 Personal (non-unicode, Windows)
       Delphi 10.1 Berlin Personal (unicode, Windows)
       Lazarus 1.4.4 - FPC 2.6.4 (non-unicode, Windows)
-      Lazarus 2.0.2 - FPC 3.0.4 (non-unicode, Windows)
-      Lazarus 2.0.2 - FPC 3.0.4 (non-unicode, Linux)
-      Lazarus 2.0.2 - FPC 3.0.4 (unicode, Windows)
-      Lazarus 2.0.2 - FPC 3.0.4 (unicode, Linux)  
+      Lazarus 2.0.8 - FPC 3.0.4 (non-unicode, Windows)
+      Lazarus 2.0.8 - FPC 3.0.4 (non-unicode, Linux)
+      Lazarus 2.0.8 - FPC 3.0.4 (unicode, Windows)
+      Lazarus 2.0.8 - FPC 3.0.4 (unicode, Linux)
 
-  Version 1.2.0 (2019-08-14)
+    Compatible FPC modes:
+    
+      Delphi, DelphiUnicode, FPC (default), ObjFPC, TurboPascal
 
-  Last change 2020-03-09
+  Version 1.3.0 (2020-08-02)
+
+  Last change (2020-08-02)
 
   ©2017-2020 František Milt
 
@@ -53,25 +57,34 @@
     none
 
 ===============================================================================}
-unit StrRect;
+{
+  I do not have any good information on non-windows Delphi, therefore this
+  entire unit is marked as platform in there as a warning.
+}
+unit StrRect{$IF not Defined(FPC) and not(Defined(WINDOWS) or Defined(MSWINDOWS))} platform{$IFEND};
 
 {$IF Defined(WINDOWS) or Defined(MSWINDOWS)}
   {$DEFINE Windows}
 {$IFEND}
 
 {$IFDEF FPC}
+  // do not set $MODE, leave the unit mode-agnostic
+  {$MODESWITCH RESULT+}
+  {$INLINE ON}
+  {$DEFINE CanInline}
   {
     Activate symbol BARE_FPC if you want to compile this unit outside of
     Lazarus.
-    Non-unicode strings are assumed to be ANSI-encoded when defined, otherwise
+    Has effect only in very old FPC (prior version 2.7.1). Non-unicode default
+    strings are assumed to be encoded using current CP when defined, otherwise
     they are assumed to be UTF8-encoded.
 
     Not defined by default.
   }
   {.$DEFINE BARE_FPC}
-  {$MODE ObjFPC}{$H+}
-  {$INLINE ON}
-  {$DEFINE CanInline}
+  {$IFDEF LCL}  // clearly not bare FPC...
+    {$UNDEF BARE_FPC}
+  {$ENDIF}
 {$ELSE}
   {$IF CompilerVersion >= 17 then}  // Delphi 2005+
     {$DEFINE CanInline}
@@ -79,6 +92,16 @@ unit StrRect;
     {$UNDEF CanInline}
   {$IFEND}
 {$ENDIF}
+{$H+} // explicitly activate long strings
+
+// do not touch following
+{$IF Defined(FPC) and Defined(Windows) and (FPC_FULLVERSION < 20701)}
+  {$IFDEF BARE_FPC}
+    {$DEFINE FPC_OLD_WIN_BARE}
+  {$ELSE}
+    {$DEFINE FPC_OLD_WIN_LAZ}
+  {$ENDIF}
+{$IFEND}
 
 interface
 
@@ -91,9 +114,8 @@ type
 {$IFEND}
 
 {===============================================================================
-    auxiliary functions
+    auxiliary public functions
 ===============================================================================}
-
 {
   Following two functions are present in newer Delphi where they replace
   deprecated UTF8Decode/UTF8Encode.
@@ -111,6 +133,29 @@ Function StringToUTF8(const Str: UnicodeString): UTF8String;{$IFDEF CanInline} i
 {===============================================================================
     default string <-> explicit string conversion
 ===============================================================================}
+type
+{$IF Defined(FPC) and Defined(Unicode)}
+  TRTLString = AnsiString;
+{$ELSE}
+  TRTLString = String;
+{$IFEND}
+{$IF not Defined(FPC) and Defined(Windows) and Defined(Unicode)}
+  TWinString = WideString;
+  TSysString = WideString;
+{$ELSE}
+  TWinString = AnsiString;
+  TSysString = AnsiString;
+{$IFEND}
+{$IF not Defined(FPC) and Defined(Unicode)}
+  TGUIString = UnicodeString;
+{$ELSE}
+  TGUIString = AnsiString;
+{$IFEND}
+{$IF Defined(FPC) and not Defined(Windows) and Defined(Unicode)}
+  TCSLSTring = AnsiString;
+{$ELSE}
+  TCSLString = String;
+{$IFEND}
 
 Function StrToShort(const Str: String): ShortString;{$IFDEF CanInline} inline; {$ENDIF}
 Function ShortToStr(const Str: ShortString): String;{$IFDEF CanInline} inline; {$ENDIF}
@@ -127,20 +172,26 @@ Function WideToStr(const Str: WideString): String;{$IFDEF CanInline} inline; {$E
 Function StrToUnicode(const Str: String): UnicodeString;{$IFDEF CanInline} inline; {$ENDIF}
 Function UnicodeToStr(const Str: UnicodeString): String;{$IFDEF CanInline} inline; {$ENDIF}
 
-Function StrToRTL(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
-Function RTLToStr(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
+Function StrToRTL(const Str: String): TRTLString;{$IFDEF CanInline} inline; {$ENDIF}
+Function RTLToStr(const Str: TRTLString): String;{$IFDEF CanInline} inline; {$ENDIF}
+
+Function StrToGUI(const Str: String): TGUIString;{$IFDEF CanInline} inline; {$ENDIF}
+Function GUIToStr(const Str: TGUIString): String;{$IFDEF CanInline} inline; {$ENDIF}
 
 Function StrToWinA(const Str: String): AnsiString;{$IFDEF CanInline} inline; {$ENDIF}
 Function WinAToStr(const Str: AnsiString): String;{$IFDEF CanInline} inline; {$ENDIF}
 
-Function StrToWinW(const Str: String): UnicodeString;{$IFDEF CanInline} inline; {$ENDIF}
-Function WinWToStr(const Str: UnicodeString): String;{$IFDEF CanInline} inline; {$ENDIF}
+Function StrToWinW(const Str: String): WideString;{$IFDEF CanInline} inline; {$ENDIF}
+Function WinWToStr(const Str: WideString): String;{$IFDEF CanInline} inline; {$ENDIF}
 
-Function StrToWin(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
-Function WinToStr(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
+Function StrToWin(const Str: String): TWinString;{$IFDEF CanInline} inline; {$ENDIF}
+Function WinToStr(const Str: TWinString): String;{$IFDEF CanInline} inline; {$ENDIF}
 
-Function StrToCsl(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
-Function CslToStr(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
+Function StrToCsl(const Str: String): TCSLSTring;{$IFDEF CanInline} inline; {$ENDIF}
+Function CslToStr(const Str: TCSLSTring): String;{$IFDEF CanInline} inline; {$ENDIF}
+
+Function StrToSys(const Str: String): TSysString;{$IFDEF CanInline} inline; {$ENDIF}
+Function SysToStr(const Str: TSysString): String;{$IFDEF CanInline} inline; {$ENDIF}
 
 {===============================================================================
     explicit string comparison
@@ -160,19 +211,21 @@ uses
 {$IF not Defined(FPC) and (CompilerVersion >= 20)}(* Delphi2009+ *)
   , AnsiStrings
 {$IFEND}
-{$IF not Defined(FPC) and Defined(Windows)}
+{$IFDEF Windows}
   , Windows
-{$IFEND}
-{$IF Defined(FPC) and not Defined(BARE_FPC)}
+{$ENDIF}
+{$IF Defined(FPC) and Defined(Windows) and not Defined(BARE_FPC)}
 (*
   If compiler raises and error that LazUTF8 unit cannot be found, you have to
   add LazUtils to required packages (Project > Project Inspector).
+  Works only in Lazarus, if you are compiling in bare FPC, define (uncomment)
+  symbol BARE_FPC (see defines at the beginning of this unit).
 *)
   , LazUTF8
 {$IFEND};
 
 {===============================================================================
-    auxiliary functions
+    auxiliary public functions
 ===============================================================================}
 
 {$IFDEF Implement_UTF8ToString}
@@ -199,134 +252,78 @@ end;
     internal functions
 -------------------------------------------------------------------------------}
 
-// non-unicode delphi
-{$IF not Defined(FPC) and not Defined(Unicode)}
+{$IF Defined(FPC) and Defined(Windows)}
 
-Function AnsiToConsole(const Str: String): String;
+Function UnicodeToWinCP(const Str: UnicodeString; CodePage: UINT): AnsiString;
 begin
-{$IFDEF Windows}
-  If Length (Str) > 0 then
-    begin
-      Result := StrToWinA(Str);
-      UniqueString(Result);
-      If not CharToOEMBuff(PAnsiChar(Result),PAnsiChar(Result),Length(Result)) then
-        Result := '';
-    end
-  else Result := '';
-{$ELSE}
-  Result := Str;
-{$ENDIF}
+If Length (Str) > 0 then
+  begin
+    SetLength(Result,WideCharToMultiByte(CodePage,0,PUnicodeChar(Str),Length(Str),nil,0,nil,nil));
+    WideCharToMultiByte(CodePage,0,PUnicodeChar(Str),Length(Str),PAnsiChar(Result),Length(Result) * SizeOf(AnsiChar),nil,nil);
+  {$IF Defined(FPC) and (FPC_FULLVERSION >= 20701)}
+    SetCodePage(RawByteString(Result),CodePage,False);
+  {$IFEND}
+  end
+else Result := '';
 end;
 
 //------------------------------------------------------------------------------
 
-Function ConsoleToAnsi(const Str: String): String;
+Function WinCPToUnicode(const Str: AnsiString; CodePage: UINT): UnicodeString;
+const
+  ExclCodePages: array[0..19] of Word = (50220,50221,50222,50225,50227,50229,52936,
+    54936,57002,57003,57004,57005,57006,57007,57008,57009,57010,57011,65000,42);
+var
+  i:      Integer;
+  Flags:  DWORD;
 begin
-{$IFDEF Windows}
-  If Length (Str) > 0 then
-    begin
-      Result := Str;
-      UniqueString(Result);
-      If OEMToCharBuff(PAnsiChar(Result),PAnsiChar(Result),Length(Result)) then
-        Result := WinAToStr(Result)
-      else
-        Result := '';
-    end
-  else Result := '';
-{$ELSE}
-  Result := Str;
-{$ENDIF}
+If Length (Str) > 0 then
+  begin
+    Flags := MB_PRECOMPOSED;
+    For i := Low(ExclCodePages) to High(ExclCodePages) do
+      If CodePage = ExclCodePages[i] then
+        begin
+          Flags := 0;
+          Break{For i};
+        end;
+    SetLength(Result,MultiByteToWideChar(CodePage,Flags,PAnsiChar(Str),Length(Str) * SizeOf(AnsiChar),nil,0));
+    MultiByteToWideChar(CodePage,Flags,PAnsiChar(Str),Length(Str) * SizeOf(AnsiChar),PUnicodeChar(Result),Length(Result));
+  end
+else Result := '';
 end;
 
 {$IFEND}
 
-//==============================================================================
+//------------------------------------------------------------------------------
 
-// non-unicode FPC
-{$IF Defined(FPC) and not Defined(Unicode)}
+{$IF Defined(Windows) and not Defined(Unicode)}
 
-Function _StrToAnsi(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
+Function AnsiToConsole(const Str: AnsiString): AnsiString;
 begin
-{$IFDEF BARE_FPC}
-  Result := Str;
-{$ELSE}
-  {$IFDEF Windows}
-  Result := UTF8ToWinCP(Str);
-  {$ELSE}
-  Result := UTF8ToAnsi(Str);
-  {$ENDIF}
-{$ENDIF}
+If Length (Str) > 0 then
+  begin
+    Result := StrToWinA(Str);
+    UniqueString(Result);
+    If not CharToOEMBuff(PAnsiChar(Result),PAnsiChar(Result),Length(Result)) then
+      Result := '';
+  end
+else Result := '';
 end;
 
 //------------------------------------------------------------------------------
 
-Function _AnsiToStr(const Str: String): String;{$IFDEF CanInline} inline; {$ENDIF}
+Function ConsoleToAnsi(const Str: AnsiString): AnsiString;
 begin
-{$IFDEF BARE_FPC}
-  Result := Str;
-{$ELSE}
-  {$IFDEF Windows}
-  Result := WinCPToUTF8(Str);
-  {$ELSE}
-  Result := AnsitoUTF8(Str);
-  {$ENDIF}
-{$ENDIF}
-end;
-
-//------------------------------------------------------------------------------
-
-Function _StrToUTF8(const Str: String): UTF8String;{$IFDEF CanInline} inline; {$ENDIF}
-begin
-{$IFDEF BARE_FPC}
-  Result := AnsiToUTF8(Str);
-{$ELSE}
-  If Length(Str) > 0 then
-    begin
-      // prevent implicit conversion
-      SetLength(Result,Length(Str));
-      Move(Addr(Str[1])^,Addr(Result[1])^,Length(Str));
-    end
-  else Result := '';
-{$ENDIF}
-end;
-
-//------------------------------------------------------------------------------
-
-Function _UTF8ToStr(const Str: UTF8String): String;{$IFDEF CanInline} inline; {$ENDIF}
-begin
-{$IFDEF BARE_FPC}
-  Result := UTF8ToAnsi(Str);
-{$ELSE}
-  If Length(Str) > 0 then
-    begin
-      // prevent implicit conversion
-      SetLength(Result,Length(Str));
-      Move(Addr(Str[1])^,Addr(Result[1])^,Length(Str));
-    end
-  else Result := '';
-{$ENDIF}
-end;
-
-//------------------------------------------------------------------------------
-
-Function _StrToWide(const Str: String): UnicodeString;{$IFDEF CanInline} inline; {$ENDIF}
-begin
-{$IFDEF BARE_FPC}
-  Result := UnicodeString(Str);
-{$ELSE}
-  Result := UTF8Decode(Str);
-{$ENDIF}
-end;
-
-//------------------------------------------------------------------------------
-
-Function _WideToStr(const Str: UnicodeString): String;{$IFDEF CanInline} inline; {$ENDIF}
-begin
-{$IFDEF BARE_FPC}
-  Result := String(Str);
-{$ELSE}
-  Result := UTF8Encode(Str);
-{$ENDIF}
+If Length (Str) > 0 then
+  begin
+    Result := Str;
+    UniqueString(Result);
+    If OEMToCharBuff(PAnsiChar(Result),PAnsiChar(Result),Length(Result)) then
+      Result := WinAToStr(Result)
+    else
+      Result := '';
+  end
+else Result := '';
 end;
 
 {$IFEND}
@@ -337,28 +334,42 @@ end;
 
 Function StrToShort(const Str: String): ShortString;
 begin
-{$IFOPT H+}
-  // long strings
-{$IFDEF Unicode}
-  {$IFDEF FPC}
-    // unicode FPC (String = UnicodeString)
-    Result := ShortString({$IFNDEF BARE_FPC}UTF8ToWinCP{$ENDIF}(UTF8Encode(Str)));
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := ShortString(StringToUTF8(Str));
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := ShortString({$IFDEF FPC_OLD_WIN_LAZ}UTF8ToWinCP{$ENDIF}(Str));
+    {$ENDIF}
   {$ELSE}
-    // unicode Delphi (String = UnicodeString)
-    Result := ShortString(Str);
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := ShortString(StringToUTF8(Str));
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := ShortString(Str);
+    {$ENDIF}
   {$ENDIF}
 {$ELSE}
-  {$IFDEF FPC}
-    // non-unicode FPC (String = AnsiString(UTF8))
-    Result := ShortString(_StrToAnsi(Str));
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := ShortString(Str);
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := ShortString(Str);
+    {$ENDIF}
   {$ELSE}
-    // non-unicode delphi (String = AnsiString)
-    Result := ShortString(Str);
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := ShortString(StringToUTF8(Str));
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := ShortString(Str);
+    {$ENDIF}
   {$ENDIF}
-{$ENDIF}
-{$ELSE}
-  // short strings
-  Result := Str;
 {$ENDIF}
 end;
 
@@ -366,22 +377,42 @@ end;
 
 Function ShortToStr(const Str: ShortString): String;
 begin
-{$IFOPT H+}
-{$IFDEF Unicode}
-  {$IFDEF FPC}
-    Result := UTF8Decode({$IFNDEF BARE_FPC}WinCPToUTF8{$ENDIF}(AnsiString(Str)));
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := String(UTF8Decode(Str));
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := String({$IFDEF FPC_OLD_WIN_LAZ}WinCPToUTF8{$ENDIF}(Str));
+    {$ENDIF}
   {$ELSE}
-    Result := String(Str);
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := String(UTF8Decode(Str));
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := String(Str);
+    {$ENDIF}
   {$ENDIF}
 {$ELSE}
-  {$IFDEF FPC}
-    Result := _AnsiToStr(AnsiString(Str));
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := String(Str);
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := String(Str);
+    {$ENDIF}
   {$ELSE}
-    Result := String(Str);
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := String(UTF8ToString(Str));
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := String(Str);
+    {$ENDIF}
   {$ENDIF}
-{$ENDIF}
-{$ELSE}
-  Result := Str;
 {$ENDIF}
 end;
 
@@ -389,17 +420,41 @@ end;
 
 Function StrToAnsi(const Str: String): AnsiString;
 begin
-{$IFDEF Unicode}
-  {$IFDEF FPC}
-    Result := {$IFNDEF BARE_FPC}UTF8ToWinCP{$ENDIF}(UTF8Encode(Str));
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := UnicodeToWinCP(Str,CP_ACP);
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFNDEF FPC_OLD_WIN_BARE}UnicodeToWinCP(UTF8Decode(Str),CP_ACP){$ELSE}Str{$ENDIF};
+    {$ENDIF}
   {$ELSE}
-    Result := AnsiString(Str);
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := UTF8Encode(Str);
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := Str;
+    {$ENDIF}
   {$ENDIF}
 {$ELSE}
-  {$IFDEF FPC}
-    Result := _StrToAnsi(Str);
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := AnsiString(Str);
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := Str;
+    {$ENDIF}
   {$ELSE}
-    Result := Str;
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := StringToUTF8(Str);
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := Str;
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 end;
@@ -408,17 +463,41 @@ end;
 
 Function AnsiToStr(const Str: AnsiString): String;
 begin
-{$IFDEF Unicode}
-  {$IFDEF FPC}
-    Result := UTF8Decode({$IFNDEF BARE_FPC}WinCPToUTF8{$ENDIF}(Str));
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := WinCPToUnicode(Str,CP_ACP);
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFNDEF FPC_OLD_WIN_BARE}UTF8Encode(WinCPToUnicode(Str,CP_ACP)){$ELSE}Str{$ENDIF};
+    {$ENDIF}
   {$ELSE}
-    Result := String(Str);
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := UTF8Decode(Str);
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := Str;
+    {$ENDIF}
   {$ENDIF}
 {$ELSE}
-  {$IFDEF FPC}
-    Result := _AnsiToStr(Str);
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := String(Str);
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := Str;
+    {$ENDIF}
   {$ELSE}
-    Result := Str;
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := UTF8ToString(Str);
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := Str;
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 end;
@@ -427,17 +506,41 @@ end;
 
 Function StrToUTF8(const Str: String): UTF8String;
 begin
-{$IFDEF Unicode}
-  {$IFDEF FPC}
-    Result := UTF8Encode(Str);
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := UTF8Encode(Str);
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFDEF FPC_OLD_WIN_BARE}AnsiToUTF8{$ENDIF}(Str);
+    {$ENDIF}
   {$ELSE}
-    Result := StringToUTF8(Str);
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := UTF8Encode(Str);
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := Str;
+    {$ENDIF}
   {$ENDIF}
 {$ELSE}
-  {$IFDEF FPC}
-    Result := _StrToUTF8(Str);
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := StringToUTF8(Str);
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := AnsiToUTF8(Str);
+    {$ENDIF}
   {$ELSE}
-    Result := AnsiToUTF8(Str);
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := StringToUTF8(Str);
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := Str;
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 end;
@@ -446,17 +549,41 @@ end;
 
 Function UTF8ToStr(const Str: UTF8String): String;
 begin
-{$IFDEF Unicode}
-  {$IFDEF FPC}
-    Result := UTF8Decode(Str);
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := UTF8Decode(Str);
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFDEF FPC_OLD_WIN_BARE}UTF8ToAnsi{$ENDIF}(Str);
+    {$ENDIF}
   {$ELSE}
-    Result := UTF8ToString(Str);
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := UTF8Decode(Str);
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := Str;
+    {$ENDIF}
   {$ENDIF}
 {$ELSE}
-  {$IFDEF FPC}
-    Result := _UTF8ToStr(Str);
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := UTF8ToString(Str);
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := UTF8ToAnsi(Str);
+    {$ENDIF}
   {$ELSE}
-    Result := UTF8ToAnsi(Str);
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := UTF8ToString(Str);
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := Str;
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 end;
@@ -465,13 +592,41 @@ end;
 
 Function StrToWide(const Str: String): WideString;
 begin
-{$IFDEF Unicode}
-    Result := Str;
-{$ELSE}
-  {$IFDEF FPC}
-    Result := _StrToWide(Str);
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFDEF FPC_OLD_WIN_BARE}WideString{$ELSE}UTF8ToString{$ENDIF}(Str);
+    {$ENDIF}
   {$ELSE}
-    Result := WideString(Str);
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := Str; 
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := UTF8ToString(Str);
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := Str;  
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := WideString(Str);
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := Str;  
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := UTF8ToString(Str);
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 end;
@@ -480,13 +635,41 @@ end;
 
 Function WideToStr(const Str: WideString): String;
 begin
-{$IFDEF Unicode}
-    Result := Str;
-{$ELSE}
-  {$IFDEF FPC}
-    Result := _WideToStr(Str);
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFDEF FPC_OLD_WIN_BARE}String{$ELSE}StringtoUTF8{$ENDIF}(Str);
+    {$ENDIF}
   {$ELSE}
-    Result := String(Str);
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := Str;
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := StringtoUTF8(Str);
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := String(Str);
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := StringtoUTF8(Str);
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 end;
@@ -495,13 +678,41 @@ end;
 
 Function StrToUnicode(const Str: String): UnicodeString;
 begin
-{$IFDEF Unicode}
-    Result := Str;
-{$ELSE}
-  {$IFDEF FPC}
-    Result := _StrToWide(Str);
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFDEF FPC_OLD_WIN_BARE}UnicodeString{$ELSE}UTF8ToString{$ENDIF}(Str);
+    {$ENDIF}
   {$ELSE}
-    Result := UnicodeString(Str);
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := Str;
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := UTF8ToString(Str);
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := UnicodeString(Str);
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := UTF8ToString(Str);
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 end;
@@ -510,43 +721,213 @@ end;
 
 Function UnicodeToStr(const Str: UnicodeString): String;
 begin
-{$IFDEF Unicode}
-    Result := Str;
-{$ELSE}
-  {$IFDEF FPC}
-    Result := _WideToStr(Str);
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFDEF FPC_OLD_WIN_BARE}String{$ELSE}StringtoUTF8{$ENDIF}(Str);
+    {$ENDIF}
   {$ELSE}
-    Result := String(Str);
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := Str;
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := StringtoUTF8(Str);
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := String(Str);
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := StringtoUTF8(Str);
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 end;
 
 //------------------------------------------------------------------------------
 
-Function StrToRTL(const Str: String): String;
+Function StrToRTL(const Str: String): TRTLString;
 begin
-{$IFDEF Unicode}
-    Result := Str;
-{$ELSE}
-  {$IFDEF FPC}
-    Result := {$IFNDEF BARE_FPC}UTF8ToSys{$ENDIF}(Str);
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := StringtoUTF8(Str);
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFDEF FPC_OLD_WIN_LAZ}UTF8ToWinCP{$ENDIF}(Str);
+    {$ENDIF}
   {$ELSE}
-    Result := Str;
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := StringtoUTF8(Str);
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := Str;
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := Str;
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := Str;
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 end;
 
 //------------------------------------------------------------------------------
 
-Function RTLToStr(const Str: String): String;
+Function RTLToStr(const Str: TRTLString): String;
 begin
-{$IFDEF Unicode}
-    Result := Str;
-{$ELSE}
-  {$IFDEF FPC}
-    Result := {$IFNDEF BARE_FPC}SysToUTF8{$ENDIF}(Str);
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := UTF8ToString(Str);
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFDEF FPC_OLD_WIN_LAZ}WinCPToUTF8{$ENDIF}(Str);
+    {$ENDIF}
   {$ELSE}
-    Result := Str;
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := UTF8ToString(Str);
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := Str;
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := Str;
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := Str;
+    {$ENDIF}
+  {$ENDIF}
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function StrToGUI(const Str: String): TGUIString;
+begin
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := StringToUTF8(Str);
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := Str;
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := StringToUTF8(Str);
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := Str;
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := Str;
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := Str;
+    {$ENDIF}
+  {$ENDIF}
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function GUIToStr(const Str: TGUIString): String;
+begin
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := UTF8ToString(Str);
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := Str;
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := UTF8ToString(Str);
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := Str;
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := Str;
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := Str;
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 end;
@@ -567,66 +948,202 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function StrToWinW(const Str: String): UnicodeString;
+Function StrToWinW(const Str: String): WideString;
 begin
 Result := StrToWide(Str);
 end;
 
 //------------------------------------------------------------------------------
 
-Function WinWToStr(const Str: UnicodeString): String;
+Function WinWToStr(const Str: WideString): String;
 begin
 Result := WideToStr(Str);
 end;
 
 //------------------------------------------------------------------------------
 
-Function StrToWin(const Str: String): String;
+Function StrToWin(const Str: String): TWinString;
 begin
-{$IFDEF Unicode}
-Result := StrToWinW(Str);
-{$ELSE}
-Result := StrToWinA(Str);
-{$ENDIF}
+Result := StrToSys(Str);
 end;
 
 //------------------------------------------------------------------------------
 
-Function WinToStr(const Str: String): String;
+Function WinToStr(const Str: TWinString): String;
 begin
-{$IFDEF Unicode}
-Result := WinWToStr(Str);
-{$ELSE}
-Result := WinAToStr(Str);
-{$ENDIF}
+Result := SysToStr(Str);
 end;
 
 //------------------------------------------------------------------------------
 
-Function StrToCsl(const Str: String): String;
+Function StrToCsl(const Str: String): TCSLSTring;
 begin
-{$IFDEF Unicode}
-    Result := Str;
-{$ELSE}
-  {$IFDEF FPC}
-    Result := {$IFNDEF BARE_FPC}UTF8ToConsole{$ENDIF}(Str);
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFDEF FPC_OLD_WIN_BARE}AnsiToConsole(Str)
+        {$ELSE}UnicodeToWinCP(UTF8Decode(Str),CP_OEMCP){$ENDIF};
+    {$ENDIF}
   {$ELSE}
-    Result := AnsiToConsole(Str);
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := StringToUTF8(Str);
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := Str;
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := AnsiToConsole(Str);
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := Str;
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 end;
 
 //------------------------------------------------------------------------------
 
-Function CslToStr(const Str: String): String;
+Function CslToStr(const Str: TCSLSTring): String;
 begin
-{$IFDEF Unicode}
-    Result := Str;
-{$ELSE}
-  {$IFDEF FPC}
-    Result := {$IFNDEF BARE_FPC}ConsoleToUTF8{$ENDIF}(Str);
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFDEF FPC_OLD_WIN_BARE}ConsoleToAnsi(Str)
+        {$ELSE}UTF8Encode(WinCPToUnicode(Str,CP_OEMCP)){$ENDIF};
+    {$ENDIF}
   {$ELSE}
-    Result := ConsoleToAnsi(Str);
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := UTF8ToString(Str);
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := Str;
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := ConsoleToAnsi(Str);
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := Str;
+    {$ENDIF}
+  {$ENDIF}
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function StrToSys(const Str: String): TSysString;
+begin
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := UnicodeToWinCP(Str,CP_ACP);
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFNDEF FPC_OLD_WIN_BARE}UnicodeToWinCP(UTF8Decode(Str),CP_ACP){$ELSE}Str{$ENDIF};
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := StringToUTF8(Str);
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := Str;
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := Str;
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := StringToUTF8(Str);
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := Str;
+    {$ENDIF}
+  {$ENDIF}
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function SysToStr(const Str: TSysString): String;
+begin
+{$IFDEF FPC}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode FPC on Windows
+      Result := WinCPToUnicode(Str,CP_ACP);
+    {$ELSE}
+      // non-unicode FPC on Windows
+      Result := {$IFNDEF FPC_OLD_WIN_BARE}UTF8Encode(WinCPToUnicode(Str,CP_ACP)){$ELSE}Str{$ENDIF};
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode FPC on Linux
+      Result := UTF8ToString(Str);
+    {$ELSE}
+      // non-unicode FPC on Linux
+      Result := Str;
+    {$ENDIF}
+  {$ENDIF}
+{$ELSE}
+  {$IFDEF Windows}
+    {$IFDEF Unicode}
+      // unicode Delphi on Windows
+      Result := Str;
+    {$ELSE}
+      // non-unicode Delphi on Windows
+      Result := Str;
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF Unicode}
+      // unicode Delphi on Linux
+      Result := UTF8ToString(Str);
+    {$ELSE}
+      // non-unicode Delphi on Linux
+      Result := Str;
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 end;

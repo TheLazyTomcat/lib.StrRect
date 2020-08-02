@@ -1,0 +1,197 @@
+Following assumptions were made when compiling information present in this
+document, none of which might be correct:
+
+  - FPC supports unicode (mode DelphiUnicode or modeswitch UnicodeStrings) only
+    from version 3 up
+  - Delphi on non-windows system behaves the same as on Windows, in non-unicode
+    mode the default string is AnsiString with UTF-8 encoding
+  - everything on non-windows systems is UTF-8 encoded
+  - there are no widestring (UTF-16) system calls on non-windows systems
+  
+If you find any error, please contact the author.
+
+--------------------------------------------------------------------------------
+  Table of string types and encodings
+--------------------------------------------------------------------------------
+
+This table lists default string type and string types and their encodings based
+on where the strings are used for different compilers, compiler versions,
+selected target OS and other options.
+
+Legend:
+
+  Delphi    - Delphi compiler (supported from Delphi 7 up)
+  FPC       - Free Pascal Compiler (supported from 2.6.4 up)
+  FPC 2     - any FPC of version 2.x
+  FPC 3     - any FPC of version 3 and higher
+  FPC 2 old - FPC 2.x of version below 2.7.1
+  FPC 2 new - FPC 2.x from version 2.7.1 up
+  win       - Windows OS
+  lin       - any other OS than Windows (eg. Linux)
+  nonUC     - non-Unicode
+  UC        - Unicode
+  bare      - when compiled in bare FPC, without libraries provided by Lazarus
+  lazr      - when compiled from Lazarus, using its libraries (namely LazUtils)
+
+  Use cases:
+
+    default - default tring type, normal use troughout applications
+    Short   - short strings (type ShortString)
+    Ansi    - ansi strings (type AnsiString)
+    UTF8    - UTF8 strings (type UTF8String)
+    Wide    - wide strings (type WideString)
+    Unicode - unicode string (type UnicodeString)
+    RTL     - strings passed to or returned from RTL (Run-Time Library), specific to FPC
+    GUI     - strings passed to or returned from GUI objects, specific to FPC (LCL library)
+    WinA    - strings used in ansi version of WinAPI
+    WinW    - strings used in unicode version of WinAPI
+    Win     - strings used in default WinAPI calls
+    CSL     - strings passed to and from console (functions WriteLn, ReadLn, ...)
+    SYS     - strings used in default system calls
+
+  String types:
+
+    S - ShortString
+    A - AnsiString
+    U - UnicodeString (if not supported by compiler then it is equivalent to WideString)
+    W - WideString
+    8 - UTF8String
+
+  Encodings:
+
+    WinCP  - (Windows only) ansi encoding using current system codepage
+    OEM    - (Windows only) ansi encoding used in console
+    UTF-8  - UTF-8 encoding (single byte per character, multi-char codepoints)
+    UTF-16 - UTF-16LE encoding (two bytes per character, multi-char codepoints)
+
+  n/e - invalid combination
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+                      ||                | type/encoding                                                                                                                                             |
+                      ||                |-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+ compiler             || default string | default   | Short     | Ansi      | UTF8      | Wide      | Unicode   | RTL       | GUI       | WinA      | WinW      | Win       | CSL       | SYS       |
+=====================================================================================================================================================================================================
+ Delphi, win, nonUC   || AnsiString     | A/WinCP   | S/WinCP   | A/WinCP   | 8/UTF-8   | W/UTF-16  | U/UTF-16  | A/WinCP   | A/WinCP   | A/WinCP   | W/UTF-16  | A/WinCP   | A/OEM     | A/WinCP   |
+ Delphi, win, UC      || UnicodeString  | U/UTF-16  | S/WinCP   | A/WinCP   | 8/UTF-8   | W/UTF-16  | U/UTF-16  | U/UTF-16  | U/UTF-16  | A/WinCP   | W/UTF-16  | W/UTF-16  | U/UTF-16  | W/UTF-16  |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Delphi, lin, nonUC *3|| AnsiString     | A/UTF-8   | S/UTF-8   | A/UTF-8   | 8/UTF-8   | W/UTF-16  | U/UTF-16  | A/UTF-8   | A/UTF-8   | A/UTF-8   | W/UTF-16  | A/UTF-8   | A/UTF-8   | A/UTF-8   |
+ Delphi, lin, UC    *3|| UnicodeString  | U/UTF-16  | S/UTF-8   | A/UTF-8   | 8/UTF-8   | W/UTF-16  | U/UTF-16  | U/UTF-16  | U/UTF-16  | A/UTF-8   | W/UTF-16  | A/UTF-8   | U/UTF-16  | A/UTF-8   |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ FPC 2 old, win, bare || AnsiString     | A/WinCP   | S/WinCP   | A/WinCP   | 8/UTF-8   | W/UTF-16  | U/UTF-16  | A/WinCP   | n/e       | A/WinCP   | W/UTF-16  | A/WinCP   | A/OEM     | A/WinCP   |
+ FPC 2 old, win, lazr || AnsiString     | A/UTF-8   | S/WinCP   | A/WinCP   | 8/UTF-8   | W/UTF-16  | U/UTF-16  | A/WinCP   | A/UTF-8   | A/WinCP   | W/UTF-16  | A/WinCP   | A/OEM     | A/WinCP   |
+ FPC 2 old, lin       || AnsiString     | A/UTF-8   | S/UTF-8   | A/UTF-8 *1| 8/UTF-8   | W/UTF-16  | U/UTF-16  | A/UTF-8   | A/UTF-8   | A/UTF-8 *1| W/UTF-16  | A/UTF-8 *1| A/UTF-8   | A/UTF-8   |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ FPC 2 new, win       || AnsiString     | A/UTF-8   | S/UTF-8   | A/WinCP   | 8/UTF-8   | W/UTF-16  | U/UTF-16  | A/UTF-8   | A/UTF-8   | A/WinCP   | W/UTF-16  | A/WinCP   | A/OEM     | A/WinCP   |
+ FPC 2 new, lin       || AnsiString     | A/UTF-8   | S/UTF-8   | A/UTF-8 *1| 8/UTF-8   | W/UTF-16  | U/UTF-16  | A/UTF-8   | A/UTF-8   | A/UTF-8 *1| W/UTF-16  | A/UTF-8 *1| A/UTF-8   | A/UTF-8   |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ FPC 3+, win, nonUC   || AnsiString     | A/UTF-8   | S/UTF-8   | A/WinCP   | 8/UTF-8   | W/UTF-16  | U/UTF-16  | A/UTF-8   | A/UTF-8   | A/WinCP   | W/UTF-16  | A/WinCP   | A/OEM     | A/WinCP   |
+ FPC 3+, win, UC      || UnicodeString  | U/UTF-16  | S/UTF-8   | A/WinCP   | 8/UTF-8   | W/UTF-16  | U/UTF-16  | A/UTF-8   | A/UTF-8   | A/WinCP   | W/UTF-16  | A/WinCP *2| U/UTF-16  | A/WinCP   |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ FPC 3+, lin, nonUC   || AnsiString     | A/UTF-8   | S/UTF-8   | A/UTF-8 *1| 8/UTF-8   | W/UTF-16  | U/UTF-16  | A/UTF-8   | A/UTF-8   | A/UTF-8 *1| W/UTF-16  | A/UTF-8 *1| A/UTF-8   | A/UTF-8   |
+ FPC 3+, lin, UC      || UnicodeString  | U/UTF-16  | S/UTF-8   | A/UTF-8 *1| 8/UTF-8   | W/UTF-16  | U/UTF-16  | A/UTF-8   | A/UTF-8   | A/UTF-8 *1| W/UTF-16  | A/UTF-8 *2| U/UTF-8  | A/UTF-8   |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+*1 - there is no true ansi encoding available in non-Windows systems, UTF-8 is
+     used instead
+*2 - FPC/Lazarus always calls ansi versions of WinAPI functions (declarations
+     contain links to unicode versions, but they are in unit with compilation
+     mode overridden to ObjFPC, which disables unicode support and these link
+     are therefore never active)
+*3 - I have no information on non-Windows Delphi, therefore all string types
+     and encodings are just a wild guess
+
+NOTE - (non-Unicode FPC only) if any GUI library is present, all default
+       strings in the project have encoding used in this library, otherwise
+       they have encoding used in RTL
+
+
+--------------------------------------------------------------------------------
+  Table of conversions
+--------------------------------------------------------------------------------
+
+This table lists what kind of conversin is necessary when for individual types
+and use cases.
+Conversions are written in the form A <x> B, where A is a default string type,
+B is type to/from which a conversion is done, x is type of conversion. Note that
+A and B can be omitted.
+
+Types of conversion:
+
+  <a> - simple assignment
+  <e> - explicit conversion
+  <i> - assignment with typecast and implicit conversion
+  <m> - multistage explicit conversion is necessary
+
+-----------------------------------------------------------------------------------------------------------------------------------|
+                                  || conversion from/to default string                                                             |
+                      |-----------||-----------------------------------------------------------------------------------------------|
+ compiler             | default   || Short                 | Ansi                  | UTF8                  | Wide                  |
+====================================================================================================================================
+ Delphi, win, nonUC   | A/WinCP   ||          <i>          |          <a>          |  A/WinCP <e> 8/UTF-8  |          <i>          |
+ Delphi, win, UC      | U/UTF-16  ||          <i>          |          <i>          | U/UTF-16 <e> 8/UTF-8  |          <a>          |
+------------------------------------------------------------------------------------------------------------------------------------
+ Delphi, lin, nonUC   | A/UTF-8   ||          <i>          |          <a>          |          <a>          |  A/UTF-8 <e> W/UTF-16 |
+ Delphi, lin, UC      | U/UTF-16  || U/UTF-16 <e> 8/UTF-8  | U/UTF-16 <e> A/UTF-8  | U/UTF-16 <e> 8/UTF-8  |          <a>          |
+------------------------------------------------------------------------------------------------------------------------------------
+ FPC 2 old, win, bare | A/WinCP   ||          <i>          |          <a>          |  A/WinCP <e> 8/UTF-8  |          <i>          |
+ FPC 2 old, win, lazr | A/UTF-8   ||  A/UTF-8 <e> S/WinCP  |  A/UTF-8 <m> A/WinCP  |          <a>          |  A/UTF-8 <e> W/UTF-16 |
+ FPC 2 old, lin       | A/UTF-8   ||          <i>          |          <a>          |          <a>          |  A/UTF-8 <e> W/UTF-16 |
+------------------------------------------------------------------------------------------------------------------------------------
+ FPC 2 new, win       | A/UTF-8   ||          <i>          |  A/UTF-8 <m> A/WinCP  |          <a>          |  A/UTF-8 <e> W/UTF-16 |
+ FPC 2 new, lin       | A/UTF-8   ||          <i>          |          <a>          |          <a>          |  A/UTF-8 <e> W/UTF-16 |
+------------------------------------------------------------------------------------------------------------------------------------
+ FPC 3+, win, nonUC   | A/UTF-8   ||          <i>          |  A/UTF-8 <m> A/WinCP  |          <a>          |  A/UTF-8 <e> W/UTF-16 |
+ FPC 3+, win, UC      | U/UTF-16  || U/UTF-16 <e> S/UTF-8  | U/UTF-16 <e> A/WinCP  | U/UTF-16 <e> 8/UTF-8  |          <a>          |
+------------------------------------------------------------------------------------------------------------------------------------
+ FPC 3+, lin, nonUC   | A/UTF-8   ||          <i>          |          <a>          |          <a>          |  A/UTF-8 <e> W/UTF-16 |
+ FPC 3+, lin, UC      | U/UTF-16  || U/UTF-16 <e> S/UTF-8  | U/UTF-16 <e> A/UTF-8  | U/UTF-16 <e> 8/UTF-8  |          <a>          |
+====================================================================================================================================
+ compiler             | default   || Unicode               | RTL                   | GUI                   | WinA                *1|
+====================================================================================================================================
+ Delphi, win, nonUC   | A/WinCP   ||          <i>          |          <a>          |          <a>          |          <a>          |
+ Delphi, win, UC      | U/UTF-16  ||          <a>          |          <a>          |          <a>          |          <i>          |
+------------------------------------------------------------------------------------------------------------------------------------
+ Delphi, lin, nonUC   | A/UTF-8   ||  A/UTF-8 <e> U/UTF-16 |          <a>          |          <a>          |          <a>          |
+ Delphi, lin, UC      | U/UTF-16  ||          <a>          |          <a>          |          <a>          | U/UTF-16 <e> A/UTF-8  |
+------------------------------------------------------------------------------------------------------------------------------------
+ FPC 2 old, win, bare | A/WinCP   ||          <i>          |          <a>          |          <a>          |          <a>          |
+ FPC 2 old, win, lazr | A/UTF-8   ||  A/UTF-8 <e> U/UTF-16 |  A/UTF-8 <e> A/WinCP  |          <a>          |  A/UTF-8 <m> A/WinCP  |
+ FPC 2 old, lin       | A/UTF-8   ||  A/UTF-8 <e> U/UTF-16 |          <a>          |          <a>          |          <a>          |
+------------------------------------------------------------------------------------------------------------------------------------
+ FPC 2 new, win       | A/UTF-8   ||  A/UTF-8 <e> U/UTF-16 |          <a>          |          <a>          |  A/UTF-8 <m> A/WinCP  |
+ FPC 2 new, lin       | A/UTF-8   ||  A/UTF-8 <e> U/UTF-16 |          <a>          |          <a>          |          <a>          |
+------------------------------------------------------------------------------------------------------------------------------------
+ FPC 3+, win, nonUC   | A/UTF-8   ||  A/UTF-8 <e> U/UTF-16 |          <a>          |          <a>          |  A/UTF-8 <m> A/WinCP  |
+ FPC 3+, win, UC      | U/UTF-16  ||          <a>          | U/UTF-16 <e> A/UTF-8  | U/UTF-16 <e> A/UTF-8  | U/UTF-16 <e> A/WinCP  |
+------------------------------------------------------------------------------------------------------------------------------------
+ FPC 3+, lin, nonUC   | A/UTF-8   ||  A/UTF-8 <e> U/UTF-16 |          <a>          |          <a>          |          <a>          |
+ FPC 3+, lin, UC      | U/UTF-16  ||          <a>          | U/UTF-16 <e> A/UTF-8  | U/UTF-16 <e> A/UTF-8  | U/UTF-16 <e> A/UTF-8  |
+====================================================================================================================================
+ compiler             | default   || WinW                *2| Win                 *3| CSL                   | SYS                   |
+====================================================================================================================================
+ Delphi, win, nonUC   | A/WinCP   ||          <i>          |          <a>          |  A/WinCP <e> A/OEM    |          <a>          |
+ Delphi, win, UC      | U/UTF-16  ||          <a>          |          <a>          |          <a>          |          <a>          |
+------------------------------------------------------------------------------------------------------------------------------------
+ Delphi, lin, nonUC   | A/UTF-8   ||  A/UTF-8 <e> W/UTF-16 |          <a>          |          <a>          |          <a>          |
+ Delphi, lin, UC      | U/UTF-16  ||          <a>          | U/UTF-16 <e> A/UTF-8  |          <a>          | U/UTF-16 <e> A/UTF-8  |
+------------------------------------------------------------------------------------------------------------------------------------
+ FPC 2 old, win, bare | A/WinCP   ||          <i>          |          <a>          |  A/WinCP <e> A/OEM    |          <a>          |
+ FPC 2 old, win, lazr | A/UTF-8   ||  A/UTF-8 <e> W/UTF-16 |  A/UTF-8 <m> A/WinCP  |  A/UTF-8 <m> A/OEM    |  A/UTF-8 <m> A/WinCP  |
+ FPC 2 old, lin       | A/UTF-8   ||  A/UTF-8 <e> W/UTF-16 |          <a>          |          <a>          |          <a>          |
+------------------------------------------------------------------------------------------------------------------------------------
+ FPC 2 new, win       | A/UTF-8   ||  A/UTF-8 <e> W/UTF-16 |  A/UTF-8 <m> A/WinCP  |  A/UTF-8 <m> A/OEM    |  A/UTF-8 <m> A/WinCP  |
+ FPC 2 new, lin       | A/UTF-8   ||  A/UTF-8 <e> W/UTF-16 |          <a>          |          <a>          |          <a>          |
+------------------------------------------------------------------------------------------------------------------------------------
+ FPC 3+, win, nonUC   | A/UTF-8   ||  A/UTF-8 <e> W/UTF-16 |  A/UTF-8 <m> A/WinCP  |  A/UTF-8 <m> A/OEM    |  A/UTF-8 <m> A/WinCP  |
+ FPC 3+, win, UC      | U/UTF-16  ||          <a>          | U/UTF-16 <e> A/WinCP  |          <a>          | U/UTF-16 <e> A/WinCP  |
+------------------------------------------------------------------------------------------------------------------------------------
+ FPC 3+, lin, nonUC   | A/UTF-8   ||  A/UTF-8 <e> W/UTF-16 |          <a>          |          <a>          |          <a>          |
+ FPC 3+, lin, UC      | U/UTF-16  ||          <a>          | U/UTF-16 <e> A/UTF-8  | U/UTF-16 <e> A/UTF-8  | U/UTF-16 <e> A/UTF-8  |
+------------------------------------------------------------------------------------------------------------------------------------
+
+*1 - equals to conversion from and to ansi strings, therefore ansi routines are
+     called instead of full implementation
+*2 - equals to conversion from and to wide strings, therefore wide routines are
+     called instead of full implementation
+*2 - equals to conversion from and to system (SYS)) strings, therefore sys
+     routines are called instead of full implementation
