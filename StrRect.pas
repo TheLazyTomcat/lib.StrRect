@@ -40,9 +40,9 @@
               Also, if you are certain that some part, in here marked as
               dubious, is actually correct, let the author know.
 
-  Version 1.4 (2020-08-07)
+  Version 1.4.1 (2020-08-08)
 
-  Last change (2020-08-07)
+  Last change (2020-08-08)
 
   ©2017-2020 František Milt
 
@@ -163,30 +163,30 @@ Function UTF8AnsiDefaultStrings: Boolean;{$IFDEF CanInline} inline; {$ENDIF}
 }
 type
 {$IF Defined(FPC) and Defined(Unicode)}
-  TRTLString = AnsiString;
+  TRTLString = AnsiString;  TRTLChar = AnsiChar;  PRTLChar = PAnsiChar;
 {$ELSE}
-  TRTLString = String;
+  TRTLString = String;      TRTLChar = Char;      PRTLChar = PChar;  
 {$IFEND}
 {$IF not Defined(FPC) and Defined(Windows) and Defined(Unicode)}
-  TWinString = WideString;
-  TSysString = WideString;
+  TWinString = WideString;  TWinChar = Widechar;  PWinChar = PWideChar;
+  TSysString = WideString;  TSysChar = WideChar;  PSysChar = PWideChar;
 {$ELSE}
-  TWinString = AnsiString;
-  TSysString = AnsiString;
+  TWinString = AnsiString;  TWinChar = Ansichar;  PWinChar = PAnsiChar;
+  TSysString = AnsiString;  TSysChar = Ansichar;  PSysChar = PAnsichar;
 {$IFEND}
 {$IFDEF FPC}
   {$IF FPC_FULLVERSION >= 20701}
-  TGUIString = type AnsiString(CP_UTF8);
+  TGUIString = type AnsiString(CP_UTF8);  TGUIChar = AnsiChar;  PGUIChar = PAnsiChar;
   {$ELSE}
-  TGUIString = AnsiString;
+  TGUIString = AnsiString;  TGUIChar = AnsiChar;  PGUIChar = PAnsiChar;
   {$IFEND}
 {$ELSE}
-  TGUIString = String;
+  TGUIString = String;      TGUIChar = Char;      PGUIChar = PChar;
 {$ENDIF}
 {$IF Defined(FPC) and not Defined(Windows) and Defined(Unicode)}
-  TCSLString = AnsiString;
+  TCSLString = AnsiString;  TCSLChar = AnsiChar;  PCSLChar = PAnsiChar;
 {$ELSE}
-  TCSLString = String;
+  TCSLString = String;      TCSLChar = Char;      PCSLChar = PChar;
 {$IFEND}
 
 //------------------------------------------------------------------------------
