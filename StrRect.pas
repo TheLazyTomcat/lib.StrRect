@@ -40,11 +40,11 @@
               Also, if you are certain that some part, in here marked as
               dubious, is actually correct, let the author know.
 
-  Version 1.4.1 (2020-08-08)
+  Version 1.4.2 alpha (2021-02-20) - UCS4 code needs testing
 
-  Last change (2020-08-08)
+  Last change 2021-02-20
 
-  ©2017-2020 František Milt
+  ©2017-2021 František Milt
 
   Contacts:
     František Milt: frantisek.milt@gmail.com
@@ -80,6 +80,8 @@ unit StrRect{$IF not Defined(FPC) and not(Defined(WINDOWS) or Defined(MSWINDOWS)
   {$MODESWITCH DEFAULTPARAMETERS+}
   {$INLINE ON}
   {$DEFINE CanInline}
+  {$DEFINE FPC_DisableWarns}
+  {$MACRO ON}
   {
     Activate symbol BARE_FPC if you want to compile this unit outside of
     Lazarus.
@@ -154,6 +156,24 @@ Function UTF8AnsiStrings: Boolean;{$IFDEF CanInline} inline; {$ENDIF}
 }
 Function UTF8AnsiDefaultStrings: Boolean;{$IFDEF CanInline} inline; {$ENDIF}
 
+{
+  UCS4Encode
+
+  Converts UTF-16 encoded string into an UCS4 (UTF-32) encoded string.
+
+  This conversion is completely lossless.
+}
+Function UCS4Encode(const Str: UnicodeString): UCS4String;
+
+{
+  UCS4Encode
+
+  Converts UCS4 (UTF-32) encoded string into an UTF-16 encoded string.
+
+  This conversion is completely lossless.
+}
+Function UCS4Decode(const Str: UCS4String): UnicodeString;
+
 {===============================================================================
     Default string <-> explicit string conversions
 ===============================================================================}
@@ -206,6 +226,9 @@ Function WideToStr(const Str: WideString): String;{$IFDEF CanInline} inline; {$E
 Function StrToUnicode(const Str: String): UnicodeString;{$IFDEF CanInline} inline; {$ENDIF}
 Function UnicodeToStr(const Str: UnicodeString): String;{$IFDEF CanInline} inline; {$ENDIF}
 
+Function StrToUCS4(const Str: String): UCS4String;{$IFDEF CanInline} inline; {$ENDIF}
+Function UCS4ToStr(const Str: UCS4String): String;{$IFDEF CanInline} inline; {$ENDIF}
+
 Function StrToRTL(const Str: String): TRTLString;{$IFDEF CanInline} inline; {$ENDIF}
 Function RTLToStr(const Str: TRTLString): String;{$IFDEF CanInline} inline; {$ENDIF}
 
@@ -236,6 +259,7 @@ Function AnsiStringCompare(const A,B: AnsiString; CaseSensitive: Boolean): Integ
 Function UTF8StringCompare(const A,B: UTF8String; CaseSensitive: Boolean): Integer;
 Function WideStringCompare(const A,B: WideString; CaseSensitive: Boolean): Integer;
 Function UnicodeStringCompare(const A,B: UnicodeString; CaseSensitive: Boolean): Integer;
+Function UCS4StringCompare(const A,B: UCS4String; CaseSensitive: Boolean): Integer;{$IFDEF CanInline} inline; {$ENDIF}
 Function StringCompare(const A,B: String; CaseSensitive: Boolean): Integer;
 
 implementation
@@ -248,6 +272,12 @@ uses
 {$IFDEF Windows}
   , Windows
 {$ENDIF};
+
+{$IFDEF FPC_DisableWarns}
+  {$DEFINE FPCDWM}
+  {$DEFINE W4045:={$WARN 4045 OFF}} // Comparison might be always true due to range of constant and expression
+  {$DEFINE W6018:={$WARN 6018 OFF}} // unreachable code
+{$ENDIF}
 
 {===============================================================================
     Auxiliary public functions
@@ -322,6 +352,109 @@ begin
 {$ENDIF}
 end;
 
+//------------------------------------------------------------------------------
+
+Function UCS4Encode(const Str: UnicodeString): UCS4String;
+var
+  i:      Integer;
+  ResLen: Integer;
+begin
+// get full resulting length for one-shot preallocation
+ResLen := 0;
+If Length(Str) > 0 then
+  begin
+    i := 1;
+    while i <= Length(Str) do
+      begin
+        If (Ord(Str[i]) >= $D800) and (Ord(Str[i]) < $E000) then
+          // surrogates
+          If Ord(Str[i]) < $DC00 then
+            // high surrogate, check if next is low surrogate
+            If i < Length(Str) then
+              If (Ord(Str[i + 1]) >= $DC00) and (Ord(Str[i + 1]) < $E000) then
+                Inc(i);
+        Inc(i);
+        Inc(ResLen);
+      end;
+  end;
+SetLength(Result,ResLen + 1);
+Result[High(Result)] := 0;  // explicitly set terminating zero
+// do conversion
+i := 1;
+ResLen := 0;
+while i <= Length(Str) do
+  begin
+    Result[ResLen] := UCS4Char(Str[i]);
+    If (Ord(Str[i]) >= $D800) and (Ord(Str[i]) < $E000) then
+      // surrogates
+      If Ord(Str[i]) < $DC00 then
+        // high surrogate, next should be low surrogate
+        If i < Length(Str) then
+          If (Ord(Str[i + 1]) >= $DC00) and (Ord(Str[i + 1]) < $E000) then
+            begin
+              // combine surrogates and replace current result char
+              Result[ResLen] := UCS4Char(((Ord(Str[i]) - $D800) shl 10) +
+                                  ((Ord(Str[i + 1]) - $DC00) + $10000));
+              Inc(i);
+            end;
+    Inc(i);
+    Inc(ResLen);
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function UCS4Decode(const Str: UCS4String): UnicodeString;
+var
+  TermZero: Boolean;
+  i:        Integer;
+  ResLen:   Integer;
+  CurrChar: UCS4Char;
+
+  Function IfThenElse(Value: Boolean; RetOnTrue,RetOnFalse: Integer): Integer;
+  begin
+    If Value then
+      Result := RetOnTrue
+    else
+      Result := RetOnFalse;
+  end;
+
+begin
+If Length(Str) > 0 then
+  begin
+    // get full resulting length for one-shot preallocation
+    TermZero := Ord(Str[High(Str)]) = 0;
+    ResLen := 0;
+    For i := Low(Str) to IfThenElse(TermZero,Pred(High(Str)),High(Str)) do
+    {$IFDEF FPCDWM}{$PUSH}W4045{$ENDIF}
+      Inc(ResLen, 1 + IfThenElse((Str[i] > $FFFF) and (Str[i] <= $10FFFF),1,0));
+    {$IFDEF FPCDWM}{$POP}{$ENDIF}
+    // preallocation
+    SetLength(Result,ResLen);
+    // do conversion
+    ResLen := 1;
+    For i := Low(Str) to IfThenElse(TermZero,Pred(High(Str)),High(Str)) do
+      begin
+        CurrChar := Str[i];
+        If CurrChar <= $FFFF then
+          Result[ResLen] := WideChar(CurrChar)  // what if this produces a lone surrogate?
+      {$IFDEF FPCDWM}{$PUSH}W4045{$ENDIF}
+        else If CurrChar <= $10FFFF then
+      {$IFDEF FPCDWM}{$POP}{$ENDIF}
+          begin
+            Result[ResLen] := WideChar(((CurrChar - $10000) shr 10) + $D800);   // high surrogate
+            Inc(ResLen);
+            Result[ResLen] := WideChar(((CurrChar - $10000) and $3FF) + $DC00); // low surrogate
+          end
+      {$IFDEF FPCDWM}{$PUSH}W6018{$ENDIF}
+        else
+          Result[ResLen] := '?';  // replace by $FFFD or maybe by largest possible surrogate?
+      {$IFDEF FPCDWM}{$POP}{$ENDIF}
+        Inc(ResLen);
+      end;
+  end
+else Result := '';
+end;
 
 {===============================================================================
     Internal functions
@@ -918,6 +1051,21 @@ end;
 
 //------------------------------------------------------------------------------
 
+Function StrToUCS4(const Str: String): UCS4String;
+begin
+// two-stage conversion
+Result := UCS4Encode(StrToUnicode(Str));
+end;
+
+//------------------------------------------------------------------------------
+
+Function UCS4ToStr(const Str: UCS4String): String;
+begin
+Result := UnicodeToStr(UCS4Decode(Str));
+end;
+
+//------------------------------------------------------------------------------
+
 Function StrToRTL(const Str: String): TRTLString;
 begin
 {$IFDEF FPC}
@@ -1503,6 +1651,13 @@ else
   Result := SysUtils.WideCompareText(A,B)
 {$ENDIF}
 {$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function UCS4StringCompare(const A,B: UCS4String; CaseSensitive: Boolean): Integer;
+begin
+Result := UnicodeStringCompare(UCS4Decode(A),UCS4DEcode(B),CaseSensitive);
 end;
 
 //------------------------------------------------------------------------------
