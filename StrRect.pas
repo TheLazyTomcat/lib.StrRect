@@ -1657,7 +1657,7 @@ end;
 
 Function UCS4StringCompare(const A,B: UCS4String; CaseSensitive: Boolean): Integer;
 begin
-Result := UnicodeStringCompare(UCS4Decode(A),UCS4DEcode(B),CaseSensitive);
+Result := UnicodeStringCompare(UCS4Decode(A),UCS4Decode(B),CaseSensitive);
 end;
 
 //------------------------------------------------------------------------------
