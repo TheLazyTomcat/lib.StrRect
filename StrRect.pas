@@ -40,9 +40,9 @@
               Also, if you are certain that some part, in here marked as
               dubious, is actually correct, let the author know.
 
-  Version 1.4.2 alpha (2021-02-20) - UCS4 code needs testing
+  Version 1.4.2 (2021-02-26)
 
-  Last change 2021-02-20
+  Last change 2021-02-26
 
   ©2017-2021 František Milt
 
@@ -162,6 +162,10 @@ Function UTF8AnsiDefaultStrings: Boolean;{$IFDEF CanInline} inline; {$ENDIF}
   Converts UTF-16 encoded string into an UCS4 (UTF-32) encoded string.
 
   This conversion is completely lossless.
+
+  NOTE - Lone surrogates, though being an invalid codepoints, are encoded
+         directly as they are (with no change in numerical value).
+         For example lone #$DCAB will be directly encoded as #$0000DCAB.
 }
 Function UCS4Encode(const Str: UnicodeString): UCS4String;
 
@@ -171,6 +175,12 @@ Function UCS4Encode(const Str: UnicodeString): UCS4String;
   Converts UCS4 (UTF-32) encoded string into an UTF-16 encoded string.
 
   This conversion is completely lossless.
+
+  NOTE - UCS4 character equal to a surrogate are directly copied, producing
+         lone surrogates in the resulting string.
+
+  WARNING - Values beyod the allowed range (abowe $10FFFF) are converted to an
+            unicode replacement character ($FFFD).
 }
 Function UCS4Decode(const Str: UCS4String): UnicodeString;
 
@@ -437,18 +447,19 @@ If Length(Str) > 0 then
       begin
         CurrChar := Str[i];
         If CurrChar <= $FFFF then
-          Result[ResLen] := WideChar(CurrChar)  // what if this produces a lone surrogate?
+          Result[ResLen] := WideChar(CurrChar)  // lone surrogates are just copied
       {$IFDEF FPCDWM}{$PUSH}W4045{$ENDIF}
         else If CurrChar <= $10FFFF then
       {$IFDEF FPCDWM}{$POP}{$ENDIF}
           begin
+            // create surrogate pair
             Result[ResLen] := WideChar(((CurrChar - $10000) shr 10) + $D800);   // high surrogate
             Inc(ResLen);
             Result[ResLen] := WideChar(((CurrChar - $10000) and $3FF) + $DC00); // low surrogate
           end
       {$IFDEF FPCDWM}{$PUSH}W6018{$ENDIF}
         else
-          Result[ResLen] := '?';  // replace by $FFFD or maybe by largest possible surrogate?
+          Result[ResLen] := WideChar($FFFD);    // unicode replacement character
       {$IFDEF FPCDWM}{$POP}{$ENDIF}
         Inc(ResLen);
       end;
