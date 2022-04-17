@@ -40,11 +40,11 @@
               Also, if you are certain that some part, in here marked as
               dubious, is actually correct, let the author know.
 
-  Version 1.4.2 (2021-02-26)
+  Version 1.4.3 (2022-04-17)
 
-  Last change 2021-02-26
+  Last change 2022-04-17
 
-  ©2017-2021 František Milt
+  ©2017-2022 František Milt
 
   Contacts:
     František Milt: frantisek.milt@gmail.com
@@ -404,7 +404,7 @@ while i <= Length(Str) do
             begin
               // combine surrogates and replace current result char
               Result[ResLen] := UCS4Char(((Ord(Str[i]) - $D800) shl 10) +
-                                  ((Ord(Str[i + 1]) - $DC00) + $10000));
+                                         ((Ord(Str[i + 1]) - $DC00) + $10000));
               Inc(i);
             end;
     Inc(i);
@@ -503,12 +503,19 @@ begin
 If Length (Str) > 0 then
   begin
     Flags := MB_PRECOMPOSED;
-    For i := Low(ExclCodePages) to High(ExclCodePages) do
-      If CodePage = ExclCodePages[i] then
-        begin
-          Flags := 0;
-          Break{For i};
-        end;
+  {
+    In wast majority of cases, the code page will be CP_ACP (0), so testing for
+    all excluded CPs is nonsense - limit number of necessary comparisons to
+    speed things up.
+  }
+    If not(((CodePage < 50220) and (CodePage <> 42)) or
+           ((CodePage > 57011) and (CodePage <> 65000))) then
+      For i := Low(ExclCodePages) to High(ExclCodePages) do
+        If CodePage = ExclCodePages[i] then
+          begin
+            Flags := 0;
+            Break{For i};
+          end;
     SetLength(Result,MultiByteToWideChar(CodePage,Flags,PAnsiChar(Str),Length(Str) * SizeOf(AnsiChar),nil,0));
     MultiByteToWideChar(CodePage,Flags,PAnsiChar(Str),Length(Str) * SizeOf(AnsiChar),PUnicodeChar(Result),Length(Result));
   end
